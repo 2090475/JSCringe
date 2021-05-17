@@ -13,7 +13,12 @@ import {DRACOLoader} from "../libraries/three.js-master/examples/jsm/loaders/DRA
 
 //import {GameObject} from "./GameObject.js";
 
+// these will manage the loading screen
 var loadingScreen, loadingManager, RESOURCES_LOADED;
+
+// the loadingManager is added to every *Loader() so it keeps track of whats loaded or not
+// then RESOURCES_LOADED will be set to true when its done
+// now scroll all the way down to init()
 
 class World {
 
@@ -376,13 +381,22 @@ class Camera3P
 
 let _APP = null;
 
-function loadWorld() { _APP = new World(); }
+// initializes the world
+function loadWorld() { 
+    _APP = new World(); 
+}
 
+// THE FIRST FUNCTION THAT IS CALLED WHEN THIS SCRIPT RUNS
 function init() { 
+
     // An object to hold all the things needed for our loading screen
     loadingScreen = {
         scene: new THREE.Scene(),
         camera: new THREE.PerspectiveCamera(90, 1280/720, 0.1, 100),
+
+        /* this is the little blue box animation you'll see on the loading screen.
+           it will be fancier in time 
+        */
         box: new THREE.Mesh(
             new THREE.BoxGeometry(0.5,0.5,0.5),
             new THREE.MeshBasicMaterial({ color:0x4444ff })
@@ -392,18 +406,21 @@ function init() {
     loadingManager = null;
     RESOURCES_LOADED = false;
 
-    // Set up the loading screen's scene.
-	// It can be treated just like our main scene.
+    // Set up the loading screen's scene. It can be treated just like our main scene.
 	loadingScreen.box.position.set(0,0,5);
 	loadingScreen.camera.lookAt(loadingScreen.box.position);
 	loadingScreen.scene.add(loadingScreen.box);
 
+    // then the loading manager
     loadingManager = new THREE.LoadingManager();
 	loadingManager.onLoad = function(){
-		console.log("loaded all resources");
+		// console.log("loaded all resources");
 		RESOURCES_LOADED = true;
 	};
 
     window.addEventListener('DOMContentLoaded', loadWorld()); 
-} export {init} ;
+} 
+
+// so that index2.js can call Main.js
+export {init} ;
 
