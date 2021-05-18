@@ -15,10 +15,33 @@ import {DRACOLoader} from "../libraries/three.js-master/examples/jsm/loaders/DRA
 
 // these will manage the loading screen
 var loadingScreen, loadingManager, RESOURCES_LOADED;
-
 // the loadingManager is added to every *Loader() so it keeps track of whats loaded or not
 // then RESOURCES_LOADED will be set to true when its done
 // now scroll all the way down to init()
+
+// vertex and fragment shaders
+const _VS = `
+varying vec3 vWorldPosition;
+
+void main() {
+  vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+  vWorldPosition = worldPosition.xyz;
+
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}`;
+
+const _FS = `
+uniform vec3 topColor;
+uniform vec3 bottomColor;
+uniform float offset;
+uniform float exponent;
+
+varying vec3 vWorldPosition;
+
+void main() {
+  float h = normalize( vWorldPosition + offset ).y;
+  gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 );
+}`;
 
 class World {
 
@@ -60,7 +83,8 @@ class World {
         const far = 1000.0;
 
         this._scene = new THREE.Scene();
-        this._scene.background = new THREE.Color(0xbdedff);
+        this._scene.background = new THREE.Color(0xFFFFFF);
+    	this._scene.fog = new THREE.FogExp2(0x89b2eb, 0.002);
 
         let light = new THREE.DirectionalLight(0xFFFFFF, 1.0);
         light.position.set(20, 100, 1);
@@ -84,9 +108,9 @@ class World {
         this._scene.add(light);
 
         const plane = new THREE.Mesh(
-            new THREE.PlaneGeometry(100, 100, 10, 10),
+            new THREE.PlaneGeometry(1000, 1000, 10, 10),
             new THREE.MeshPhongMaterial({
-                color: 0xbd8e77
+                color: 0x1e601c
             }));
         plane.receiveShadow = true;
         plane.rotation.x = -Math.PI / 2;
@@ -95,7 +119,6 @@ class World {
         this._player = new Player(this._renderer, this._scene);
 
         const loader = new GLTFLoader(loadingManager);
-
         loader.load('./resources/models/M1A2-Abrams.glb', (gltf) => {
             let model = gltf.scene;
 
@@ -111,8 +134,37 @@ class World {
             this._scene.add(model);
         });
 
+        this.LoadSky();
         this.RAF();
     }
+
+    LoadSky() {
+	    const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFFF, 0.6);
+	    hemiLight.color.setHSL(0.6, 1, 0.6);
+	    hemiLight.groundColor.setHSL(0.095, 1, 0.75);
+	    this._scene.add(hemiLight);
+
+	    const uniforms = {
+	      "topColor": { value: new THREE.Color(0x0077ff) },
+	      "bottomColor": { value: new THREE.Color(0xffffff) },
+	      "offset": { value: 33 },
+	      "exponent": { value: 0.6 }
+	    };
+	    uniforms["topColor"].value.copy(hemiLight.color);
+
+	    this._scene.fog.color.copy(uniforms["bottomColor"].value);
+
+	    const skyGeo = new THREE.SphereBufferGeometry(1000, 32, 15);
+	    const skyMat = new THREE.ShaderMaterial({
+	        uniforms: uniforms,
+	        vertexShader: _VS,
+	        fragmentShader: _FS,
+	        side: THREE.BackSide
+	    });
+
+	    const sky = new THREE.Mesh(skyGeo, skyMat);
+	    this._scene.add(sky);
+	}
 
     RAF() {
         requestAnimationFrame(() => {
