@@ -9,5 +9,3 @@ loadGameButton.onclick = function(){
     loadGameButton.parentElement.removeChild(loadGameButton)
     init();
 }
-
-
