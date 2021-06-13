@@ -10,18 +10,99 @@
 
 <body>
 
-<script src="code/index2.js" type="module"></script>
+    <script src="code/MainMenu.js" type="module"></script>
 
-<div class="loadGameDiv">
-    <button id="loadGame">LOAD GAME</button>
-</div>
+    <div class="loadGameDiv">
+        <button id="level1">Level 1</button>
+        <button id="level2">Level 2</button>
+        <button id="level3">Level 3</button>
+    </div>
+    <div id="lowerUI" class="lowerUI">
+        <div id="ammoUI" class="ammoUI">
+            <p id = weaponName class = weaponName>M4 CARBINE</p>
+            <a href="./resources/UI/icon_M4.png">
+                <img id=weaponIcon class=ammoIcon src="./resources/UI/icon_M4.png" width="256" height="100">
+            </a>
+            <p id = ammoCount class = ammoCount>30/30</p>
+            <p id = firingMode class = firingMode>SEMI</p>
+        </div>
+        <div id="healthUI" class="healthUI">
+            <a href="./resources/UI/heart.png">
+                <img id=healthIcon class=healthIcon src="./resources/UI/heart.png" width="64" height="64">
+            </a>
+            <p id = healthBar class = healthBar>100</p>
+        </div>
+    </div>
 
-<div id="headerDiv" class="header">
-    <h1>JS CRINGE</h1>
-</div>
 
-<script src = "code/Main.js" type="module"></script>
+
+
 
 </body>
+
+<style>
+    .lowerUI
+    {
+        margin-bottom: 30px;
+        margin-right: 50px;
+        width: inherit;
+        height: fit-content;
+        position: absolute;
+        bottom: 0;
+        visibility: hidden;
+    }
+    .ammoUI {
+        align-content: center;
+        width: fit-content;
+        height: fit-content;
+        float: right;
+    }
+    .ammoIcon {
+        border: 3px solid #333333;
+        width: 256px;
+        height: 100px;
+    }
+    .weaponName
+    {
+        font: 20px Cambria;
+        color: azure;
+        text-align: left;
+    }
+    .ammoCount
+    {
+        margin-top: 5px;
+        margin-bottom: 5px;
+
+        font: 40px Cambria;
+        color: azure;
+        text-align: left;
+    }
+    .firingMode
+    {
+        margin-top: 2px;
+        margin-bottom: 2px;
+
+        font: 20px Cambria;
+        color: azure;
+        text-align: left;
+    }
+    .healthUI
+    {
+        margin-left: 70px;
+    }
+    .healthIcon
+    {
+        width: 64px;
+        height: 64px;
+        float: left;
+    }
+    .healthBar
+    {
+        margin-left: 30px;
+        font: 40px Cambria;
+        color: azure;
+        text-align: left;
+    }
+</style>
 
 </html>
