@@ -1,445 +1,118 @@
-// VERY IMPORTANT: we HAVE to import three.module.js because this file is being used as a module.
-// If we try to import three.js or three.min.js, our program WILL NOT RUN AT ALL
+(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
 
 import * as THREE from '../libraries/three.js-master/build/three.module.js';
-import {OrbitControls} from '../libraries/three.js-master/examples/jsm/controls/OrbitControls.js';
-import {FirstPersonControls} from '../libraries/three.js-master/examples/jsm/controls/FirstPersonControls.js';
-import {PointerLockControls} from '../libraries/three.js-master/examples/jsm/controls/PointerLockControls.js';
 import {GLTFLoader} from '../libraries/three.js-master/examples/jsm/loaders/GLTFLoader.js';
-import {FBXLoader} from '../libraries/three.js-master/examples/jsm/loaders/FBXLoader.js';
-import {DRACOLoader} from "../libraries/three.js-master/examples/jsm/loaders/DRACOLoader.js";
 
-//import '../libraries/cannon/cannon.js';
+import '../libraries/cannon/cannon.js';
+import {World} from "../code/World.js";
 
 //import {GameObject} from "./GameObject.js";
 
-// these will manage the loading screen
-var loadingScreen, loadingManager, RESOURCES_LOADED;
-// the loadingManager is added to every *Loader() so it keeps track of whats loaded or not
-// then RESOURCES_LOADED will be set to true when its done
-// now scroll all the way down to init()
+let loadingScreen, loadingManager;
+let RESOURCES_LOADED = false;
 
-// vertex and fragment shaders
-const _VS = `
-varying vec3 vWorldPosition;
 
-void main() {
-  vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
-  vWorldPosition = worldPosition.xyz;
+let M_pine_1;
+let M_grass_tuft;
+let M_character;
+let M_M4;
+let M_tracer;
+let M_casing;
+let M_building;
 
-  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-}`;
+let T_gunflash;
+let T_grass;
 
-const _FS = `
-uniform vec3 topColor;
-uniform vec3 bottomColor;
-uniform float offset;
-uniform float exponent;
+let A_character;
+let A_zombie;
 
-varying vec3 vWorldPosition;
+const playershoot = new Event('playershoot');
+const hitmarker = new Event('hitmarker');
+const hitmarker_head = new Event('hitmarker_head');
 
-void main() {
-  float h = normalize( vWorldPosition + offset ).y;
-  gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 );
-}`;
 
-class World {
 
-    _renderer; // the renderer that renders the world on screen
-
-    _scene // the graphics component of our scene
-
-    _clock;
-
-    _player;
-
-    constructor()
-    {
-        // graphics world setup stuff
-        this._renderer = new THREE.WebGLRenderer({
-            antialias: true,
-        });
-        this._renderer.shadowMap.enabled = true;
-        this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this._renderer.setPixelRatio(window.devicePixelRatio);
-        this._renderer.setSize(window.innerWidth, window.innerHeight);
-
-        document.body.appendChild(this._renderer.domElement);
-
-        window.addEventListener('resize', () => {
-            this._OnWindowResize();
-        }, false);
-
-        this._clock = new THREE.Clock();
-
-        this.StartUp();
-    }
-
-    StartUp() {
-
-        const fov = 60;
-        const aspect = 1920 / 1080;
-        const near = 1.0;
-        const far = 1000.0;
-
-        this._scene = new THREE.Scene();
-        this._scene.background = new THREE.Color(0xFFFFFF);
-    	this._scene.fog = new THREE.FogExp2(0x89b2eb, 0.002);
-
-        let light = new THREE.DirectionalLight(0xFFFFFF, 1.0);
-        light.position.set(20, 100, 1);
-        light.target.position.set(0, 0, 0);
-        light.castShadow = true;
-        light.shadow.bias = -0.001;
-        light.shadow.mapSize.width = 2048;
-        light.shadow.mapSize.height = 2048;
-        light.shadow.camera.near = 0.1;
-        light.shadow.camera.far = 500.0;
-        light.shadow.camera.near = 0.5;
-        light.shadow.camera.far = 500.0;
-        light.shadow.camera.left = 100;
-        light.shadow.camera.right = -100;
-        light.shadow.camera.top = 100;
-        light.shadow.camera.bottom = -100;
-        this._scene.add(light);
-
-        light = new THREE.AmbientLight(0xffffff);
-        light.intensity = 1;
-        this._scene.add(light);
-
-        const plane = new THREE.Mesh(
-            new THREE.PlaneGeometry(1000, 1000, 10, 10),
-            new THREE.MeshPhongMaterial({
-                color: 0x1e601c
-            }));
-        plane.receiveShadow = true;
-        plane.rotation.x = -Math.PI / 2;
-        this._scene.add(plane);
-
-        this._player = new Player(this._renderer, this._scene);
-
-        const loader = new GLTFLoader(loadingManager);
-        loader.load('./resources/models/M1A2-Abrams.glb', (gltf) => {
-            let model = gltf.scene;
-
-            model.traverse(o => {
-                if (o.isMesh)
-                {
-                    o.castShadow = true;
-                    o.receiveShadow = true;
-                    o.material = this.GetMaterial('./resources/models/woodlands.png');;
-                }
-            });
-
-            this._scene.add(model);
-        });
-
-        this.LoadSky();
-        this.RAF();
-    }
-
-    LoadSky() {
-	    const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFFF, 0.6);
-	    hemiLight.color.setHSL(0.6, 1, 0.6);
-	    hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-	    this._scene.add(hemiLight);
-
-	    const uniforms = {
-	      "topColor": { value: new THREE.Color(0x0077ff) },
-	      "bottomColor": { value: new THREE.Color(0xffffff) },
-	      "offset": { value: 33 },
-	      "exponent": { value: 0.6 }
-	    };
-	    uniforms["topColor"].value.copy(hemiLight.color);
-
-	    this._scene.fog.color.copy(uniforms["bottomColor"].value);
-
-	    const skyGeo = new THREE.SphereBufferGeometry(1000, 32, 15);
-	    const skyMat = new THREE.ShaderMaterial({
-	        uniforms: uniforms,
-	        vertexShader: _VS,
-	        fragmentShader: _FS,
-	        side: THREE.BackSide
-	    });
-
-	    const sky = new THREE.Mesh(skyGeo, skyMat);
-	    this._scene.add(sky);
-	}
-
-    RAF() {
-        requestAnimationFrame(() => {
-            // This block runs while resources are loading.
-            if( RESOURCES_LOADED == false ){            
-                loadingScreen.box.position.x -= 0.05;
-                if( loadingScreen.box.position.x < -10 ) loadingScreen.box.position.x = 10;
-                loadingScreen.box.position.y = Math.sin(loadingScreen.box.position.x);
-                this._renderer.render(loadingScreen.scene, loadingScreen.camera);
-            }
-
-            if (this._player.camera3P != null) {
-                this._renderer.render(this._scene, this._player.camera3P._camera);
-                this._player.Update();
-            }
-            
-            this.RAF();
-        });
-    }
-
-    GetMaterial(directory)
-    {
-        let texture = new THREE.TextureLoader(loadingManager).load(directory);
-        texture.flipY = false; // we flip the texture so that its the right way up
-        const material = new THREE.MeshPhongMaterial({
-            map: texture,
-            color: 0xffffff,
-            skinning: true
-        });
-        return material;
-    }
-
-    _OnWindowResize() {
-        // this._player.camera3P._camera.aspect = window.innerWidth / window.innerHeight;
-        // this._player.camera3P._camera.updateProjectionMatrix();
-        // this._renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-}
-
-class Player
+export class Cube
 {
-    model;
-    file_animations;
-    animation_mixer;
-    controller;
-    _clock;
-    camera3P;
+    mesh;
+    cubeBody;
 
-    constructor(renderer, scene)
+    constructor(scene, physics_world)
     {
-        this._clock = new THREE.Clock();
-        this.controller = new PlayerController();
+        const material = new THREE.MeshNormalMaterial()
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material)
+        this.mesh.position.x = 0
+        this.mesh.position.y = 5
+        this.mesh.position.z = 0
+        this.mesh.castShadow = true
+        scene.add(this.mesh)
 
-        const loader = new GLTFLoader(loadingManager);
-        loader.load('./resources/models/Character.glb', (gltf) => {
-
-            let texture = new THREE.TextureLoader(loadingManager).load('./resources/models/character.png');
-            texture.flipY = false; // we flip the texture so that its the right way up
-            const material = new THREE.MeshPhongMaterial({
-                map: texture,
-                color: 0xffffff,
-                skinning: true
-            });
-            this.model = gltf.scene;
-            this.model.traverse(o => {
-                if (o.isMesh)
-                {
-                    o.castShadow = true;
-                    o.receiveShadow = true;
-                    o.material = material;
-                }
-            });
-
-            this.file_animations = gltf.animations;
-            this.animation_mixer = new THREE.AnimationMixer(this.model);
-            let idleAnim = THREE.AnimationClip.findByName(this.file_animations, 'Rest');
-            this.animation_mixer.clipAction(idleAnim).play();
-
-            const fov = 60;
-            const aspect = 1920 / 1080;
-            const near = 1.0;
-            const far = 1000.0;
-            this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-            this._camera.position.set(1, 2,-3);
-            this._camera.lookAt(new THREE.Vector3(this.model.position.x, this.model.position.y + 2, this.model.position.z));
-
-            this.camera3P = new Camera3P(renderer, this.model.position, this.model.rotation);
-            scene.add(this.camera3P._camera);
-
-            scene.add(this.model);
-        });
+        const cubeShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5))
+        this.cubeBody = new CANNON.Body({ mass: 1 });
+        this.cubeBody.addShape(cubeShape)
+        this.cubeBody.position.x = this.mesh.position.x
+        this.cubeBody.position.y = this.mesh.position.y
+        this.cubeBody.position.z = this.mesh.position.z
+        physics_world.add(this.cubeBody)
     }
-
-    AnimateRun()
-    {
-        if (!this.animation_mixer) { return; }
-
-        let idleAnim = THREE.AnimationClip.findByName(this.file_animations, 'Run');
-        this.animation_mixer.clipAction(idleAnim).play();
-    }
-    AnimateIdle()
-    {
-        if (!this.animation_mixer) { return; }
-
-        this.animation_mixer.stopAllAction ();
-
-        let idleAnim = THREE.AnimationClip.findByName(this.file_animations, 'Rest');
-        this.animation_mixer.clipAction(idleAnim).play();
-    }
-
     Update()
     {
-        if (this.animation_mixer)
-        {
-            this.animation_mixer.update(this._clock.getDelta());
-        }
-
-        if (this.controller == null)
-        {
-            console.log("controller was null");
-        }
-        if (this.controller.keys.forward)
-        {
-            this.AnimateRun();
-            this.model.translateZ(0.12);
-            //console.log("forward");
-        }
-        else if (this.controller.keys.backward)
-        {
-            this.AnimateRun();
-            this.model.translateZ(-0.1);
-            //console.log("forward");
-        }
-        else
-        {
-            this.AnimateIdle();
-        }
-
-        this.model.rotateY(this.controller.current_yaw);
-
-        if (this.camera3P != null)
-        {
-            this.controller.current_yaw = 0;
-            this.camera3P.Update(this._clock.getDelta(), this.model.position, this.model.quaternion);
-        }
-        //this.model.translate(0.25, 0, 0);
+        this.mesh.position.copy(this.cubeBody.position);
+        this.mesh.quaternion.copy(this.cubeBody.quaternion);
     }
 }
 
-class PlayerController {
-
-    keys;
-    current_yaw;
-
-    constructor() {
-        this.keys = {
-            forward: false,
-            backward: false,
-            left: false,
-            right: false,
-            space: false,
-            shift: false,
-        };
-
-        this.current_yaw = 1;
-        this.x_previous = 0;
-
-        document.addEventListener('keydown', (e) => this._onKeyDown(e), false);
-        document.addEventListener('keyup', (e) => this._onKeyUp(e), false);
-        document.addEventListener('mousemove', (e) => this._OnMouseMove(e), false);
-    }
-
-    _onKeyDown(event) {
-        switch (event.keyCode) {
-            case 87: // w
-                this.keys.forward = true;
-                break;
-            case 65: // a
-                this.keys.left = true;
-                break;
-            case 83: // s
-                this.keys.backward = true;
-                break;
-            case 68: // d
-                this.keys.right = true;
-                break;
-            case 32: // SPACE
-                this.keys.space = true;
-                break;
-            case 16: // SHIFT
-                this.keys.shift = true;
-                break;
-        }
-    }
-
-    _onKeyUp(event) {
-        switch(event.keyCode) {
-            case 87: // w
-                this.keys.forward = false;
-                break;
-            case 65: // a
-                this.keys.left = false;
-                break;
-            case 83: // s
-                this.keys.backward = false;
-                break;
-            case 68: // d
-                this.keys.right = false;
-                break;
-            case 32: // SPACE
-                this.keys.space = false;
-                break;
-            case 16: // SHIFT
-                this.keys.shift = false;
-                break;
-        }
-    }
-
-    _OnMouseMove(event)
-    {
-        //console.log(event.movementX);
-
-        let x = event.screenX;
-        let x_change = event.screenX - this.x_previous;
-        this.x_previous = x;
-        this.current_yaw = x_change * -0.03;
-        //console.log(this.current_yaw);
-    }
-};
-
-class Camera3P
+export function PlayBulletHitSound(listener, object3D)
 {
-    _camera;
-    controls;
-    look_position;
-    constructor(renderer, lookPosition, lookRotation)
+    let sound = "";
+    let rand = THREE.MathUtils.randInt(0, 6);
+    switch(rand)
     {
-        const fov = 60;
-        const aspect = 1920 / 1080;
-        const near = 1.0;
-        const far = 1000.0;
-        this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        this._camera.position.set(3, 2,-3);
-        this._camera.lookAt(new THREE.Vector3(lookPosition.x + 3, lookPosition.y + 4, lookPosition.z));
-
-        this._currentPosition = new THREE.Vector3();
-        this._currentLookat = new THREE.Vector3();
-
-        //const controls = new OrbitControls( this._camera, renderer.domElement );
-        //controls.update();
+        case 0: sound = './resources/sounds/bullet_hit_1.mp3'; break;
+        case 1: sound = './resources/sounds/bullet_hit_2.mp3'; break;
+        case 2: sound = './resources/sounds/bullet_hit_3.mp3'; break;
+        case 3: sound = './resources/sounds/bullet_hit_4.mp3'; break;
+        case 4: sound = './resources/sounds/bullet_hit_5.mp3'; break;
+        case 5: sound = './resources/sounds/bullet_hit_6.mp3'; break;
+        case 6: sound = './resources/sounds/bullet_hit_7.mp3'; break;
     }
 
-    Update(deltaTime, position, rotation)
-    {
-        const idealOffset = new THREE.Vector3(0, 3,-5);
-        idealOffset.applyQuaternion(rotation);
-        idealOffset.add(position);
+    const hitsound = new THREE.PositionalAudio(listener);
 
-        this._currentPosition.lerp(idealOffset, 0.5);
-        this._currentLookat.lerp(new THREE.Vector3(position.x, position.y + 2, position.z), 0.5);
-
-        this._camera.position.copy(this._currentPosition);
-        this._camera.lookAt(this._currentLookat);
-    }
+    const audioLoader = new THREE.AudioLoader();
+    audioLoader.load(sound, function (buffer) {
+        hitsound.setBuffer(buffer);
+        hitsound.setMaxDistance(0.5);
+        hitsound.setRefDistance(0.1)
+        hitsound.setRolloffFactor(0.9)
+        hitsound.setDistanceModel('linear')
+        hitsound.setLoop(false);
+        hitsound.setVolume(0.5);
+        object3D.add(hitsound);
+        hitsound.play();
+    });
 }
 
 let _APP = null;
 
 // initializes the world
-function loadWorld() { 
-    _APP = new World(); 
+export function loadWorld1() {
+    _APP = new World();
+    _APP.LoadLevel1();
+}
+
+export function loadWorld2() {
+    _APP = new World();
+    _APP.LoadLevel2();
+}
+
+export function loadWorld3() {
+    _APP = new World();
+    _APP.LoadLevel3();
 }
 
 // THE FIRST FUNCTION THAT IS CALLED WHEN THIS SCRIPT RUNS
-function init() { 
+export function init(levelName) {
 
     // An object to hold all the things needed for our loading screen
     loadingScreen = {
@@ -447,7 +120,7 @@ function init() {
         camera: new THREE.PerspectiveCamera(90, 1280/720, 0.1, 100),
 
         /* this is the little blue box animation you'll see on the loading screen.
-           it will be fancier in time 
+           it will be fancier in time
         */
         box: new THREE.Mesh(
             new THREE.BoxGeometry(0.5,0.5,0.5),
@@ -455,24 +128,205 @@ function init() {
         )
     };
 
-    loadingManager = null;
-    RESOURCES_LOADED = false;
-
     // Set up the loading screen's scene. It can be treated just like our main scene.
-	loadingScreen.box.position.set(0,0,5);
-	loadingScreen.camera.lookAt(loadingScreen.box.position);
-	loadingScreen.scene.add(loadingScreen.box);
+    loadingScreen.box.position.set(0,0,5);
+    loadingScreen.camera.lookAt(loadingScreen.box.position);
+    loadingScreen.scene.add(loadingScreen.box);
 
     // then the loading manager
     loadingManager = new THREE.LoadingManager();
-	loadingManager.onLoad = function(){
-		// console.log("loaded all resources");
-		RESOURCES_LOADED = true;
-	};
+    const loader = new GLTFLoader(loadingManager);
+    loader.load('./resources/models/Pine_1.glb', (gltf) => {
 
-    window.addEventListener('DOMContentLoaded', loadWorld()); 
-} 
+        M_pine_1 = gltf.scene;
+        M_pine_1.traverse(o => {
+            if (o.isMesh)
+            {
+                if (o.name === 'pine_1_leaves')
+                {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
 
-// so that index2.js can call Main.js
-export {init} ;
+                    const texture = new THREE.TextureLoader(loadingManager).load('./resources/models/pine_1_leaf.png');
+                    texture.flipY = false; // we flip the texture so that its the right way up
+                    const material = new THREE.MeshStandardMaterial({
+                        map: texture,
+                        color: 0xAAAAAA,
+                        transparent: true,
+                        skinning: true,
+                        roughness: 1
+                    });
+                    o.material = material;
+                }
+                if (o.name === 'pine_1_trunk')
+                {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
 
+                    const texture = new THREE.TextureLoader(loadingManager).load('./resources/models/pine_1_trunk.png');
+                    texture.flipY = false; // we flip the texture so that its the right way up
+                    const material = new THREE.MeshLambertMaterial({
+                        map: texture,
+                        color: 0xAAAAAA,
+                        skinning: true
+                    });
+                    o.material = material;
+                }
+            }
+        });
+    });
+    loader.load('./resources/models/Grass_Tuft.glb', (gltf) => {
+
+        M_grass_tuft = gltf.scene;
+        M_grass_tuft.traverse(o => {
+            if (o.isMesh)
+            {
+                o.castShadow = true;
+                o.receiveShadow = true;
+
+                const texture = new THREE.TextureLoader(loadingManager).load('./resources/models/grass_tuft.png');
+                texture.flipY = false; // we flip the texture so that its the right way up
+                const material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    color: 0xAAAAAA,
+                    transparent: true,
+                    skinning: true,
+                    roughness: 1
+                });
+                o.material = material;
+            }
+        });
+    });
+    loader.load('./resources/models/Character.glb', (gltf) => {
+
+        A_character = gltf.animations;
+        A_zombie = gltf.animations;
+
+        let texture = new THREE.TextureLoader(loadingManager).load('./resources/models/character.png');
+        texture.flipY = false; // we flip the texture so that its the right way up
+        const material = new THREE.MeshPhongMaterial({
+            map: texture,
+            color: 0xffffff,
+            skinning: true
+        });
+
+
+        M_character = gltf.scene;
+        M_character.traverse(o => {
+            if (o.isMesh)
+            {
+                o.castShadow = true;
+                o.receiveShadow = true;
+                o.material = material;
+            }
+        });
+
+    });
+    loader.load('./resources/models/Tracer.glb', (gltf) => {
+
+        const material = new THREE.MeshLambertMaterial({
+            color: 0xff9100,
+            emissive: 0xff9100,
+            skinning: true
+        });
+
+        M_tracer = gltf.scene;
+        M_tracer.traverse(o => {
+            if (o.isMesh)
+            {
+                o.material = material;
+            }
+        });
+    });
+    loader.load('./resources/models/Casing.glb', (gltf) => {
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0xffce47,
+            skinning: true,
+            roughness: 0.5,
+            metalness: 0.7
+        });
+
+        M_casing = gltf.scene;
+        M_casing.traverse(o => {
+            if (o.isMesh)
+            {
+                o.material = material;
+            }
+        });
+    });
+    loader.load('./resources/models/M4.glb', (gltf) => {
+
+        const texture = new THREE.TextureLoader(loadingManager).load('./resources/models/M4A1.png');
+        texture.flipY = false; // we flip the texture so that its the right way up
+        const material = new THREE.MeshLambertMaterial({
+            map: texture,
+            color: 0xffffff,
+            skinning: true,
+        });
+
+        M_M4 = gltf.scene;
+        M_M4.position.x += 0.05;
+        M_M4.traverse(o => {
+            if (o.isMesh)
+            {
+                o.castShadow = true;
+                o.receiveShadow = true;
+                o.material = material;
+            }
+        });
+    });
+
+    const textureLoader = new THREE.TextureLoader(loadingManager);
+    T_gunflash = textureLoader.load('./resources/models/flash.png');
+    T_gunflash.flipY = false; // we flip the texture so that its the right way up
+    T_grass = textureLoader.load('./resources/models/grass.png');
+    T_grass.flipY = false; // we flip the texture so that its the right way up
+
+    loadingManager.onProgress = function ( url, itemsLoaded, itemsTotal ) {
+        console.log( 'Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.' );
+    };
+    loadingManager.onLoad = function(){
+        console.log("loaded all resources");
+        RESOURCES_LOADED = true;
+
+        if (levelName === 'level1')
+        {
+            loadWorld1();
+        }
+        if (levelName === 'level2')
+        {
+            loadWorld2();
+        }
+        if (levelName === 'level3')
+        {
+            loadWorld3();
+            console.log("Start level");
+        }
+
+        // make ammo UI invisible
+        let ammoUI = document.getElementById("lowerUI")
+        ammoUI.style.visibility = 'visible'
+    };
+}
+
+export
+{
+    M_pine_1,
+    M_grass_tuft,
+    M_character,
+    M_M4,
+    M_tracer,
+    M_casing,
+    M_building,
+
+    T_gunflash,
+    T_grass,
+
+    A_character,
+    A_zombie,
+
+    playershoot,
+    hitmarker,
+    hitmarker_head
+}
