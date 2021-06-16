@@ -23,6 +23,8 @@ let M_building;
 let T_gunflash;
 let T_grass;
 
+let Grass;
+
 let A_character;
 let A_zombie;
 
@@ -30,7 +32,8 @@ const playershoot = new Event('playershoot');
 const hitmarker = new Event('hitmarker');
 const hitmarker_head = new Event('hitmarker_head');
 
-
+//did not change anything in this file primarily worked in the world,Player,Tree and LoadModels files
+//you'll find comments where i added code
 
 export class Cube
 {
@@ -132,7 +135,7 @@ export function init(levelName) {
     loadingScreen.box.position.set(0,0,5);
     loadingScreen.camera.lookAt(loadingScreen.box.position);
     loadingScreen.scene.add(loadingScreen.box);
-
+   
     // then the loading manager
     loadingManager = new THREE.LoadingManager();
     const loader = new GLTFLoader(loadingManager);
@@ -310,6 +313,8 @@ export function init(levelName) {
     };
 }
 
+
+
 export
 {
     M_pine_1,
@@ -325,6 +330,8 @@ export
 
     A_character,
     A_zombie,
+
+    Grass,
 
     playershoot,
     hitmarker,
