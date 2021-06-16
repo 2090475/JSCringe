@@ -18,16 +18,15 @@ class LoadModels{
         'Flowers.fbx','TreeStump.fbx',
         'Rock_4.fbx',
         'Willow_2.fbx','BirchTree_Dead_5.fbx'];
-    farmCoordinates = [[30,3],[-20,-2],[-35,-2],[25,70],[-100,50]];
-    buildings = ['BigBarn.fbx','ChickenCoop.fbx','ChickenCoop.fbx','Barn.fbx','Windmill.fbx','Silo_House.fbx','TowerWindmill.fbx','Well.fbx'];
+    
+    loaderObjects;
     loader = new FBXLoader();
 
    constructor(scene,physics_world){
      this.loader.setPath('./resources/Houses/FBX/');
-     this.positionX = 0;
-     this.positionZ = -6;
+     
      this.colliderWorld = physics_world;
-    // this.layoutTheFarm(scene,physics_world);
+   
      this.layFence(scene,physics_world);
      
      
@@ -44,7 +43,7 @@ class LoadModels{
                 fbx.traverse(c => {
                     c.castShadow = true;
                     this._geometry = c.geometry;
-                  //  {(Math.random()*2 -1 ) * 200
+                  
                     fbx.position.set(this.farmCoordinates[index][0],0,this.farmCoordinates[index][1]); 
                    // }
                 });
@@ -98,9 +97,8 @@ class LoadModels{
             this.fillFence(scene,this.corner[index],this.corner[index+2]);
         }else if(index == 7){
             this.fillFence(scene,this.corner[index],this.corner[2]);
-            this.layFoliange(scene);
+            this.layFloor(scene);
             
-            //console.log()
         }  
 
 
@@ -110,6 +108,8 @@ class LoadModels{
         this._body = new CANNON.Body({ mass: 0 });
         this._body.addShape(cubeShape);
         this._body.position.copy(fbx.position);
+        console.log("Fence body",this._body)
+
         this.colliderWorld.addBody(this._body);
         
         
@@ -126,24 +126,6 @@ class LoadModels{
         });
      }
             
-   }
-
-   Update(){
-
-   // for(let i = 0;i < this.corner.length ; ++ i){
-
-        this._body.position.set(this.corner[0],0,this.corner[1]);
-
-        i%2 == 1 ? 
-            this._body.quaternion.setFromAxisAngle(new CANNON.Vec3(0,0,1),-1.7)
-                :null;
-        this.colliderWorld.addBody(this._body);
-   // }
-
-    
-        
-    
-
    }
 
    fillFence(myWorld,first,second){ 
@@ -167,11 +149,12 @@ class LoadModels{
                         });
 
                         this._geometry.computeBoundingBox();
-                        //const dim = this._geometry.boundingBox
+                    
                         const cubeShape = this.createBoxShape(this._geometry);
                         this._body = new CANNON.Body({ mass: 0 });
                         this._body.addShape(cubeShape);
                         this._body.position.copy(fbx.position);
+
                         this.colliderWorld.addBody(this._body);
 
                         myWorld.add(fbx);
@@ -199,6 +182,9 @@ class LoadModels{
                         this._body = new CANNON.Body({ mass: 0 });
                         this._body.addShape(cubeShape);
                         this._body.position.copy(fbx.position);
+
+                        
+
                         this.colliderWorld.addBody(this._body);
 
                         myWorld.add(fbx);
@@ -233,6 +219,9 @@ class LoadModels{
                         this._body = new CANNON.Body({ mass: 0 });
                         this._body.addShape(cubeShape);
                         this._body.position.copy(fbx.position);
+
+                        this._body.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0), this._body.positionY);
+
                         this.colliderWorld.addBody(this._body);
 
                         fbx.rotateY(-1.7);
@@ -262,6 +251,8 @@ class LoadModels{
                         this._body = new CANNON.Body({ mass: 0 });
                         this._body.addShape(cubeShape);
                         this._body.position.copy(fbx.position);
+
+                        this._body.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0), this._body.positionY);
                         this.colliderWorld.addBody(this._body);
 
                         fbx.rotateY(-1.7);
@@ -280,27 +271,30 @@ class LoadModels{
 
    }
 
-   layFloor(scene){
-
+layFloor(scene){
     this.loader.setPath('./resources/Textured_trees/FBX/');
-    for(let index = 0; index < 100 ; ++ index){
-        
-        this.loader.load('Grass_Short.fbx',(fbx) => {
+    
+    for(let index = 0; index < 100 ; ++ index){  
+    this.loader.load('Grass_Short.fbx',(fbx) => {
             
             fbx.scale.setScalar(0.01);
             fbx.traverse(c => {
                 c.castShadow = true;
-                fbx.position.set(this.getRandom(-80,80),0,this.getRandom(-90,60)); 
+                 
             });
 
+            fbx.position.copy(this.getRandom(-80,80),0,this.getRandom(-90,60));
             scene.add(fbx);
+            
         });
 
+     
+        
 
-   }
+    }
+
+    this.layFoliange(scene);
 }
-
-
 
    layFoliange(scene){
 
@@ -332,7 +326,7 @@ class LoadModels{
         });
     }
 
-    this.layFloor(scene);
+   // this.layFloor(scene);
 
 
    }

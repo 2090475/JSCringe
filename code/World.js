@@ -115,8 +115,10 @@ export class World {
         // light.shadow.camera.bottom = -100;
         // this.scene.add(light);
 
-        const axesHelper = new THREE.AxesHelper( 5 );
-        this.scene.add( axesHelper );
+       /* const axesHelper = new THREE.AxesHelper( 5 );
+        this.scene.add( axesHelper );*/
+
+        //i commented out the above code because the player seems to be colliding with axis 
 
         light = new THREE.AmbientLight(0xffffff);
         light.intensity = 1;
@@ -149,6 +151,8 @@ export class World {
         planeBody.position.y = plane.position.y;
         planeBody.position.z = plane.position.z;
         planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2)
+        planeBody.id = 200
+      
         this.physics_world.add(planeBody)
 
         this.player = new Player(this);
@@ -325,10 +329,13 @@ export class World {
         planeBody.position.y = plane.position.y;
         planeBody.position.z = plane.position.z;
         planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2)
+        planeBody.id = 200;
         this.physics_world.add(planeBody)
 
         this.player = new Player(this);
 
+        //loadModels object to load the models for level three
+        //
         this.loadModels = new LoadModels(this.scene, this.physics_world);
 
         this.zombieManager = new ZombieManager(this);

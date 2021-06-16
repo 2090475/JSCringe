@@ -12,7 +12,7 @@ export class Tree extends THREE.Object3D
     trunk;
     _geometry;
 
-    constructor(world, position,physic_world)
+    constructor(world, position)
     {
         super({position: position});
 
@@ -33,15 +33,53 @@ export class Tree extends THREE.Object3D
                 if (o.name === 'pine_1_trunk')
                 {
                     this.leaves = o;
+
+                    
                 }
 
-                this._geometry = o.geometry;
+                
             }
+            
         });
 
-        
+      
 
-        this.add(this.model);
+       //i tried adding cannon bodies to the trunks of the trees but the collision doesn't seem to be working
+       //for most of the trees 
+
+        const cubeShape = this.createBoxShape(this.model.children[2].geometry);
+
+        this.body = new CANNON.Body({ mass: 0 ,shape : cubeShape});
+
+        this.body.position.copy(this.model.position);
+        this.world.physics_world.add(this.body);
+
+        this.add(this.model);    
         this.world.scene.add(this);
     }
+
+
+    //the following methods are for creating box geometries that fit the models
+
+    createBoxShape (geometry) {
+        var vertices = this.getVertices(geometry);
+    
+        if (!vertices.length) return null;
+    
+        geometry.computeBoundingBox();
+        var box = geometry.boundingBox;
+        return new CANNON.Box(new CANNON.Vec3(
+        (box.max.x - box.min.x) * 2,
+        (box.max.y - box.min.y) * 2,
+        (box.max.z - box.min.z) * 2
+        ));
+    }
+    
+    getVertices (geometry) {
+        if (!geometry.attributes) {
+          geometry = new THREE.BufferGeometry().fromGeometry(geometry);
+        }
+        return (geometry.attributes.position || {}).array || [];
+    }
+
 }

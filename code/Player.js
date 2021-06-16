@@ -111,16 +111,21 @@ export class Player extends THREE.Object3D
         this.addEventListener('playerdamaged', (e) => this._onDamaged(e), false)
     }
 
+    //call back method for collision
     _onCollide(event){
 
-        if(event.contact.id == 17 || event.contact.id == 14 || event.contact.id == 23 || event.contact.id == 20 || event.contact.id == 26){
+        if(event.contact.bi.id == 200 || event.contact.bi.id == 0){
 
             //this is when the player collides with the plane
-            console.log("collided with the plane ",event.contact);
+            //it still seems to collide with the scene in level though
+            console.log("collided with the plane ",event.contact.bi.id);
 
         }else{
 
             //when the is a collision with one of the scene children,set the state of motion to false/1
+            //after the state of motion is changed the we check which button was pressed when the collision
+            //occurred the we disable that button to keep the player from moving
+            
             this.moveForward[0] = 1;
             this.moveBackward[0] = 1;
             console.log("the was a collision ",event.contact);
@@ -228,12 +233,16 @@ export class Player extends THREE.Object3D
         else if (this.controller.keys.backward)
         {
             this.AnimateRun();
+
+            //player can move backwards provided that they haven't collided with anything
             if(this.moveBackward.length == 0 || this.moveBackward[0] == 0){
 
                 this.model.translateZ(-0.08);
                 this.moveBackward[0] = 0;
 
             }
+
+            //enable forward movement when player has collided with an object and is back tracking
 
             this.moveForward[0] = 0;
         }
